@@ -146,7 +146,9 @@ dd of=/dev/null if=/dev/rnullb0 bs=1M count=10
 经过测试，rnull驱动能够进行基本的读写操作。
 
 ###源代码分析
+
 在这份驱动实现中，通过创建一个 NullBlkModule 模块和相关的 NullBlkDevice 结构体，以及使用 RadixTree 等数据结构，实现了一个简单的 Null block 驱动模块。这个模块在内核加载时创建了一个虚拟的块设备，并且通过模拟页面管理实现了读写等基本块设备操作。
+
 ####1 参数配置
 ```rust
 module! {
@@ -272,24 +274,43 @@ impl NullBlkDevice {
 
 ```
 struct NullBlkDevice;：定义了一个空的结构体 NullBlkDevice，用于表示Null块设备。type Tree和type Data用于存储块设备内的数据。定义了块设备的基本读写方法read和write。然后通过transfer方法根据传入的参数类型来决定调用是read操作还是write操作
+
 1，write方法：
+
 参数1：tree，&mut Tree类型，是用于存储数据的树形数据结构。
+
 参数2：sector，usize类型，表示要写入的扇区的索引。
+
 参数3：segment，&Segment<'_>类型，表示要写入的数据段。
+
 返回值：Result，写入是否成功。
+
 代码分析：计算扇区号对应的页索引idx,尝试从 tree 中获取对应页，如果不存在则插入一个新的页page。调用copy_to_page_atomic将segment中的数据复制到页面。返回结果。
+
 2， read方法：
+
 参数1：tree，&mut Tree类型，是用于存储数据的树形数据结构。
+
 参数2：sector，usize类型，表示要写入的扇区的索引。
+
 参数3：segment，&Segment<'_>类型，表示要写入的数据段。
+
 返回值：Result，读取是否成功。
+
 代码分析：计算扇区号对应的页索引idx，如果索引的page存在则将其复制，返回结果。
-3， transfer：
+
+3， transfer方法：
+
 参数1: command, bindings::req_op类型，据此来调用读写操作。
+
 参数2：tree，&mut Tree类型，是用于存储数据的树形数据结构。
+
 参数3：sector，usize类型，表示要写入的扇区的索引。
+
 参数4：segment，&Segment<'_>类型，表示要写入的数据段。
+
 返回值：Result，读取是否成功。
+
 代码分析：根据请求类型调用相应的读或写函数。
 
 ####5 null块操作集合
@@ -349,6 +370,7 @@ impl Operations for NullBlkDevice {
 }
 ```
 这段代码定义了用于null块设备的基本的操作集合，定义了设备的行为。
+
 1. new_request_data 方法用于创建新的请求数据对象。在这里，它只是返回一个空的 Result，表示请求数据对象的创建成功。
 2. queue_rq 方法处理将请求添加到队列。在这里调用 rq.start() 开始处理请求。使用memory_backed 标志检查是否支持内存备份。如果支持内存备份，获取队列数据的锁，然后遍历请求的bio和其包含的segment。调用 Self::transfer 方法，根据段的长度更新扇区号,用于在内存中进行读写操作。调用 rq.end_ok() 表示请求处理完成。
 3. commit_rqs 方法用于提交处理过的请求。在这里，它是一个空实现，没有具体的操作。
