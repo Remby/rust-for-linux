@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# 挂载一些必要的文件系统
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t tmpfs none /tmp
+mount -t devtmpfs none /dev
+
+
+# 停留在控制台
+exec /bin/sh
